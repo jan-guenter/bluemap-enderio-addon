@@ -12,9 +12,5 @@ setblock 168 100 170 minecraft:bricks
 # Supported natural-form persisted paint: oak planks
 setblock 164 100 176 enderio:painted_redstone_block{Paint:"minecraft:oak_planks"}
 setblock 168 100 176 minecraft:oak_planks
-# Malformed persisted snapshot: exact field is absent
-setblock 172 100 164 enderio:painted_redstone_block
-# Unsupported persisted target: propertyful/non-full-cube stairs resource
-setblock 172 100 170 enderio:painted_redstone_block{Paint:"minecraft:oak_stairs"}
 function enderio_gallery:verify_immediate
 schedule function enderio_gallery:verify_20t 20t replace

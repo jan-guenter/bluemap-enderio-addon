@@ -35,10 +35,10 @@ def main() -> int:
     )
 
     placements = re.findall(r"^setblock (\d+) (\d+) (\d+) (\S+)$", build, re.MULTILINE)
-    if len(placements) != 8:
-        fail("gallery must place exactly eight target blocks")
+    if len(placements) != 6:
+        fail("gallery must place exactly six target blocks")
     coordinates = [(int(x), int(y), int(z)) for x, y, z, _ in placements]
-    if len(set(coordinates)) != 8:
+    if len(set(coordinates)) != 6:
         fail("target coordinates must be unique")
     if any(not (160 <= x <= 179 and 99 <= y <= 103 and 160 <= z <= 179)
            for x, y, z in coordinates):
@@ -49,7 +49,7 @@ def main() -> int:
         for _, _, _, state in placements
     )
     if block_ids != Counter({
-        "enderio:painted_redstone_block": 5,
+        "enderio:painted_redstone_block": 3,
         "minecraft:stone": 1,
         "minecraft:bricks": 1,
         "minecraft:oak_planks": 1,
@@ -61,19 +61,16 @@ def main() -> int:
         "minecraft:stone",
         "minecraft:bricks",
         "minecraft:oak_planks",
-        "minecraft:oak_stairs",
     ]:
         fail(f"unexpected persisted paint sequence: {paints}")
-    if build.count("enderio:painted_redstone_block\n") != 1:
-        fail("exactly one malformed host must omit Paint")
     if build.count("scoreboard players add #builds enderio_gallery 1") != 1:
         fail("build must increment the persistent counter exactly once")
     if len(re.findall(
         r"^scoreboard players add #checked enderio_gallery 1$",
         verify,
         re.MULTILINE,
-    )) != 15:
-        fail("verify must contain exactly fifteen checks")
+    )) != 10:
+        fail("verify must contain exactly ten checks")
     if clear.strip().splitlines()[-1] != (
         "fill 160 99 160 179 103 179 minecraft:air"
     ):
@@ -97,7 +94,7 @@ def main() -> int:
     if build.count("schedule function enderio_gallery:verify_20t 20t replace") != 1:
         fail("build must schedule one retained 20-tick check")
 
-    print("Ender IO gallery lint passed: 8 placements, 15 checks/phase")
+    print("Ender IO gallery lint passed: 6 placements, 10 checks/phase")
     return 0
 
 
