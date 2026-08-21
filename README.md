@@ -14,6 +14,8 @@ Targets must be nonrecursive, propertyless, ordinary, deterministic, static,
 opaque, untinted canonical full cubes. Any malformed or unsupported state
 uses an atomic whole-block stock fallback. Ender IO remains operator-installed;
 this JAR packages none of its assets, classes, source, binaries, or meshes.
+For a bounded propertyless variant family, every member must pass the same
+proof and BlueMap's position-stable variant selection is retained.
 
 Conduits, conduit facades, all other painted shapes, double-slab `Paint2`,
 Athena models, machines, fluids, contents, activity and animation are outside

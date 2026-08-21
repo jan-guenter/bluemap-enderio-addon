@@ -30,6 +30,8 @@ final class CanonicalPaintTargetResolver {
     private static final Vector3f FULL_MIN = Vector3f.ZERO;
     private static final Vector3f FULL_MAX = new Vector3f(16F, 16F, 16F);
     private static final Vector4f FULL_UV = new Vector4f(0F, 0F, 16F, 16F);
+    private static final Vector4f MIRRORED_FULL_UV = new Vector4f(16F, 0F, 0F, 16F);
+    private static final int MAX_VARIANTS = 16;
 
     private final ResourcePack resourcePack;
 
@@ -37,21 +39,23 @@ final class CanonicalPaintTargetResolver {
         this.resourcePack = resourcePack;
     }
 
-    Optional<Variant> resolve(Key target) {
+    Optional<VariantSet> resolve(Key target) {
         de.bluecolored.bluemap.core.resources.pack.resourcepack.blockstate.BlockState raw =
                 resourcePack.getBlockStates().get(target);
-        Variant variant = propertylessVariant(raw);
-        if (variant == null) {
+        VariantSet variants = propertylessVariants(raw);
+        if (variants == null) {
             return Optional.empty();
         }
-        Model model = variant.getModel().getResource(resourcePack.getModels()::get);
-        if (!canonicalVariant(variant, model) || !allTexturesOpaque(model)) {
-            return Optional.empty();
+        for (Variant variant : variants.getVariants()) {
+            Model model = variant.getModel().getResource(resourcePack.getModels()::get);
+            if (!canonicalVariant(variant, model) || !allTexturesOpaque(model)) {
+                return Optional.empty();
+            }
         }
-        return Optional.of(variant);
+        return Optional.of(variants);
     }
 
-    static Variant propertylessVariant(
+    static VariantSet propertylessVariants(
             de.bluecolored.bluemap.core.resources.pack.resourcepack.blockstate.BlockState raw
     ) {
         if (raw == null || raw.getMultipart() != null) {
@@ -63,7 +67,8 @@ final class CanonicalPaintTargetResolver {
             return null;
         }
         VariantSet defaults = variants.getDefaultVariant();
-        return defaults.getVariants().length == 1 ? defaults.getVariants()[0] : null;
+        int count = defaults.getVariants().length;
+        return count >= 1 && count <= MAX_VARIANTS ? defaults : null;
     }
 
     static boolean canonicalVariant(Variant variant, Model model) {
@@ -71,7 +76,9 @@ final class CanonicalPaintTargetResolver {
                 || variant.getRenderer() != BlockRendererType.DEFAULT
                 || ResourcePack.MISSING_BLOCK_MODEL.equals(variant.getModel())
                 || variant.isUvlock()
-                || variant.isTransformed()
+                || variant.getX() != 0F
+                || variant.getZ() != 0F
+                || !safeCubeYRotation(variant.getY())
                 || Double.compare(variant.getWeight(), 1D) != 0
                 || model == null
                 || !model.isAmbientocclusion()
@@ -95,11 +102,19 @@ final class CanonicalPaintTargetResolver {
             Face face = element.getFaces().get(direction);
             if (face == null || face.getCullface() != direction
                     || face.getRotation() != 0 || face.getTintindex() != -1
-                    || !FULL_UV.equals(face.getUv())) {
+                    || !fullRangeUv(face.getUv())) {
                 return false;
             }
         }
         return true;
+    }
+
+    private static boolean safeCubeYRotation(float rotation) {
+        return rotation == 0F || rotation == 180F;
+    }
+
+    private static boolean fullRangeUv(Vector4f uv) {
+        return FULL_UV.equals(uv) || MIRRORED_FULL_UV.equals(uv);
     }
 
     private boolean allTexturesOpaque(Model model) {

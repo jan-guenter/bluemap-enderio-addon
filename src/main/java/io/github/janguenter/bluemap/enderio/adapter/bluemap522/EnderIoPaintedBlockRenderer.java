@@ -12,6 +12,7 @@ import de.bluecolored.bluemap.core.map.hires.block.BlockRenderer;
 import de.bluecolored.bluemap.core.map.hires.block.ResourceModelRenderer;
 import de.bluecolored.bluemap.core.resources.pack.resourcepack.ResourcePack;
 import de.bluecolored.bluemap.core.resources.pack.resourcepack.blockstate.Variant;
+import de.bluecolored.bluemap.core.resources.pack.resourcepack.blockstate.VariantSet;
 import de.bluecolored.bluemap.core.util.Key;
 import de.bluecolored.bluemap.core.util.math.Color;
 import de.bluecolored.bluemap.core.world.block.BlockNeighborhood;
@@ -88,11 +89,14 @@ final class EnderIoPaintedBlockRenderer implements BlockRenderer {
         if (paint.isEmpty()) {
             return false;
         }
-        Optional<Variant> targetVariant = targets.resolve(paint.orElseThrow());
-        if (targetVariant.isEmpty()) {
+        Optional<VariantSet> targetVariants = targets.resolve(paint.orElseThrow());
+        if (targetVariants.isEmpty()) {
             return false;
         }
-        resources.render(block, targetVariant.orElseThrow(), target, mapColor);
+        targetVariants.orElseThrow().forEach(
+                block.getX(), block.getY(), block.getZ(),
+                variant -> resources.render(block, variant, target, mapColor)
+        );
         return true;
     }
 

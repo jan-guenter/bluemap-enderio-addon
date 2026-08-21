@@ -39,21 +39,48 @@ class CanonicalPaintTargetResolverTest {
             new ResourcePath<>("minecraft:block/stone");
 
     @Test
-    void admitsOnlyOneUnconditionalVariant() {
+    void admitsOnlyBoundedUnconditionalVariants() {
         Variant variant = new Variant(MODEL_PATH);
-        assertSame(variant, CanonicalPaintTargetResolver.propertylessVariant(
-                new BlockState(new Variants(new VariantSet[0], new VariantSet(variant)))
+        VariantSet one = new VariantSet(variant);
+        assertSame(one, CanonicalPaintTargetResolver.propertylessVariants(
+                new BlockState(new Variants(new VariantSet[0], one))
         ));
-        assertNull(CanonicalPaintTargetResolver.propertylessVariant(null));
-        assertNull(CanonicalPaintTargetResolver.propertylessVariant(
+        assertNull(CanonicalPaintTargetResolver.propertylessVariants(null));
+        assertNull(CanonicalPaintTargetResolver.propertylessVariants(
                 new BlockState(new Variants(
                         new VariantSet[] {new VariantSet(variant)}, new VariantSet(variant)
                 ))
         ));
-        assertNull(CanonicalPaintTargetResolver.propertylessVariant(
+        assertNull(CanonicalPaintTargetResolver.propertylessVariants(
                 new BlockState(new Variants(
-                        new VariantSet[0], new VariantSet(variant, variant)
+                        new VariantSet[0], new VariantSet()
                 ))
+        ));
+    }
+
+    @Test
+    void admitsTheExactDeterministicStoneStyleVariantFamily() {
+        Variant plain = new Variant(MODEL_PATH);
+        Variant mirrored = new Variant(new ResourcePath<>("minecraft:block/stone_mirrored"));
+        Variant rotated = new Variant(MODEL_PATH, 0F, 180F, 0F);
+        Variant mirroredRotated = new Variant(
+                new ResourcePath<>("minecraft:block/stone_mirrored"), 0F, 180F, 0F
+        );
+        VariantSet stone = new VariantSet(plain, mirrored, rotated, mirroredRotated);
+        assertSame(stone, CanonicalPaintTargetResolver.propertylessVariants(
+                new BlockState(new Variants(new VariantSet[0], stone))
+        ));
+        assertTrue(CanonicalPaintTargetResolver.canonicalVariant(
+                plain, canonicalModel(Rotation.ZERO, true, 0, true, false)
+        ));
+        assertTrue(CanonicalPaintTargetResolver.canonicalVariant(
+                mirrored, canonicalModel(Rotation.ZERO, true, 0, true, true)
+        ));
+        assertTrue(CanonicalPaintTargetResolver.canonicalVariant(
+                rotated, canonicalModel(Rotation.ZERO, true, 0, true, false)
+        ));
+        assertTrue(CanonicalPaintTargetResolver.canonicalVariant(
+                mirroredRotated, canonicalModel(Rotation.ZERO, true, 0, true, true)
         ));
     }
 
@@ -89,13 +116,25 @@ class CanonicalPaintTargetResolverTest {
             int lightEmission,
             boolean includeAllFaces
     ) {
+        return canonicalModel(rotation, shade, lightEmission, includeAllFaces, false);
+    }
+
+    private static Model canonicalModel(
+            Rotation rotation,
+            boolean shade,
+            int lightEmission,
+            boolean includeAllFaces,
+            boolean mirroredUv
+    ) {
         EnumMap<Direction, Face> faces = new EnumMap<>(Direction.class);
         for (Direction direction : Direction.values()) {
             if (!includeAllFaces && direction == Direction.NORTH) {
                 continue;
             }
             faces.put(direction, new Face(
-                    new Vector4f(0F, 0F, 16F, 16F),
+                    mirroredUv
+                            ? new Vector4f(16F, 0F, 0F, 16F)
+                            : new Vector4f(0F, 0F, 16F, 16F),
                     new TextureVariable(TEXTURE_PATH),
                     direction
             ));
