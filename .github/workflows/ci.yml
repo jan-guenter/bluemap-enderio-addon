@@ -1,0 +1,156 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  PROMOTION_JAVA_VERSION: '21.0.12+8.0.LTS'
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - name: Check out add-on
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Read final release version
+        id: version
+        shell: bash
+        run: |
+          version="$(sed -n 's/^addon_version=//p' gradle.properties)"
+          test -n "${version}"
+          [[ "${version}" != *-SNAPSHOT ]]
+          echo "version=${version}" >> "${GITHUB_OUTPUT}"
+
+      - name: Check out exact BlueMap backport
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: jan-guenter/BlueMap
+          ref: 9be321df995a1103808621d529eb72773e719d4d
+          path: .ci/bluemap
+          submodules: recursive
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Verify exact detached BlueMap identities
+        run: |
+          test "$(git -C .ci/bluemap rev-parse --abbrev-ref HEAD)" = "HEAD"
+          test "$(git -C .ci/bluemap rev-parse HEAD)" = \
+            "9be321df995a1103808621d529eb72773e719d4d"
+          test "$(git -C .ci/bluemap/api rev-parse HEAD)" = \
+            "285c9a60eff3ac2b0cab308ce1058d1565be0971"
+          git -C .ci/bluemap fetch --force --tags origin
+          test "$(git -C .ci/bluemap describe --exact-match --tags HEAD)" = \
+            "v5.22-agent.backport-5.22-mc1.21.1-2"
+
+      - name: Set up exact promotion Java 21
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
+        with:
+          distribution: temurin
+          java-version: ${{ env.PROMOTION_JAVA_VERSION }}
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.13'
+
+      - name: Set up Gradle 9.6.1
+        uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
+        with:
+          gradle-version: '9.6.1'
+          cache-provider: basic
+          cache-read-only: ${{ github.event_name == 'pull_request' }}
+          validate-wrappers: true
+
+      - name: Acquire exact ephemeral Ender IO input
+        run: |
+          input_dir="${RUNNER_TEMP}/enderio-input"
+          mkdir -p "${input_dir}"
+          curl --fail --location --retry 3 --retry-all-errors \
+            --output "${input_dir}/enderio-8.2.11-beta.jar" \
+            "https://www.curseforge.com/api/v1/mods/64578/files/8192838/download"
+          test "$(stat -c %s \
+            "${input_dir}/enderio-8.2.11-beta.jar")" -eq 6592813
+          sha256sum --check <<SHA256SUMS
+          e01af48907781f2d5ccdfa8d71975b611c33f295be11b7021cb91be06ce8070c  ${input_dir}/enderio-8.2.11-beta.jar
+          SHA256SUMS
+
+      - name: Verify gallery and provenance inputs
+        run: |
+          python3 -m json.tool provenance/upstreams.json >/dev/null
+          python3 -m json.tool provenance/release.json >/dev/null
+          python3 gallery/lint.py
+          bash gallery/package.sh "${RUNNER_TEMP}/gallery-first.zip"
+          bash gallery/package.sh "${RUNNER_TEMP}/gallery-second.zip"
+          cmp "${RUNNER_TEMP}/gallery-first.zip" \
+            "${RUNNER_TEMP}/gallery-second.zip"
+          test "$(stat -c %s "${RUNNER_TEMP}/gallery-first.zip")" -eq 2732
+          sha256sum --check <<SHA256SUMS
+          02e7cfe845645197911d3bf7e15334c4771b81d8450b0db7beda40abaac3d2e6  ${RUNNER_TEMP}/gallery-first.zip
+          SHA256SUMS
+
+      - name: Build and verify final release candidate
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          input_dir="${RUNNER_TEMP}/enderio-input"
+          gradle --no-daemon \
+            -PbluemapSourcePath=.ci/bluemap \
+            -PenderIoJar="${input_dir}/enderio-8.2.11-beta.jar" \
+            "-PreleaseTag=v${VERSION}" \
+            clean check build generatePomFileForAddonPublication \
+            generateMetadataFileForAddonPublication \
+            verifyPublicationArtifacts verifyReleaseCandidate
+          test "$(stat -c %s \
+            "build/libs/bluemap-enderio-addon-${VERSION}.jar")" -eq 53872
+          test "$(stat -c %s \
+            "build/libs/bluemap-enderio-addon-${VERSION}-sources.jar")" -eq 40617
+          test "$(stat -c %s build/publications/addon/pom-default.xml)" -eq 1343
+          test "$(stat -c %s build/publications/addon/module.json)" -eq 2817
+          sha256sum --check <<SHA256SUMS
+          4434f9f7da28b157ca83e17ef5a6eaf56fee830c0044cd987e4a78b4f9f2b41a  build/libs/bluemap-enderio-addon-${VERSION}.jar
+          700a28567094bf3d44e53c524dc0481cd3ceb10a162369b26290641af7bb423c  build/libs/bluemap-enderio-addon-${VERSION}-sources.jar
+          a0d326fb533f65acff2ad4f860b81a4200bb179a3d5e58d90ccfc502af8d1a97  build/publications/addon/pom-default.xml
+          f387963a0237a19bec3c02d18697e4ecc1243304c1e885eaae28cc6e69d73429  build/publications/addon/module.json
+          SHA256SUMS
+          python3 tools/verify_staged_equivalence.py \
+            --jar "build/libs/bluemap-enderio-addon-${VERSION}.jar" \
+            --entries provenance/accepted-staging-entries.sha256
+
+      - name: Upload review outputs
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: bluemap-enderio-${{ github.sha }}
+          path: |
+            build/libs/*.jar
+            build/publications/addon/pom-default.xml
+            build/publications/addon/module.json
+            build/reports/**
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload failed-build diagnostics
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: bluemap-enderio-failure-${{ github.sha }}
+          path: |
+            build/libs/*.jar
+            build/publications/addon/*.xml
+            build/publications/addon/*.json
+            build/reports/**
+          if-no-files-found: warn
+          retention-days: 3

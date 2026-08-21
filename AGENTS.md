@@ -12,7 +12,7 @@ standalone repository. This is a plain BlueMap add-on, not a NeoForge mod.
 | BlueMap | `5.22-agent.backport-5.22-mc1.21.1-2`, commit `9be321df995a1103808621d529eb72773e719d4d` |
 | Ender IO | `enderio-8.2.11-beta.jar`, 6,592,813 bytes, SHA-256 `e01af48907781f2d5ccdfa8d71975b611c33f295be11b7021cb91be06ce8070c` |
 
-## Prototype boundary
+## Release boundary
 
 - Own only `enderio:painted_redstone_block` with block entity
   `enderio:single_painted`.
@@ -27,13 +27,18 @@ standalone repository. This is a plain BlueMap add-on, not a NeoForge mod.
   fluids, contents, activity and animation are excluded.
 - Package no Ender IO asset, class, source, binary, or derived mesh.
 
-## Minimum gate
+## Release gate
 
 ```bash
-../bluemap-backport/gradlew --no-daemon \
+gradle --no-daemon \
+  -PbluemapSourcePath=../bluemap-backport \
   -PenderIoJar=/absolute/path/enderio-8.2.11-beta.jar \
-  clean check build
+  -PreleaseTag=v0.1.0-alpha.1 \
+  clean check build generatePomFileForAddonPublication \
+  generateMetadataFileForAddonPublication verifyPublicationArtifacts \
+  verifyReleaseCandidate
 ```
 
-This gate proves only a loadable staging candidate. Owner visual acceptance,
-release, publication and production deployment remain separate decisions.
+The release records the owner's completed visual acceptance separately from
+the reproducible artifact gate. Publication never deploys to a Minecraft
+server; production deployment remains a separate decision.

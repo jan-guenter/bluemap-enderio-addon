@@ -1,6 +1,6 @@
 # BlueMap Ender IO Add-on
 
-A narrow Java 21 BlueMap 5.22 staging add-on for Ender IO's persisted painted
+A narrow Java 21 BlueMap 5.22 add-on for Ender IO's persisted painted
 redstone block.
 
 The exact All the Mons 1.2.0 profile activates only for
@@ -19,16 +19,17 @@ proof and BlueMap's position-stable variant selection is retained.
 
 Conduits, conduit facades, all other painted shapes, double-slab `Paint2`,
 Athena models, machines, fluids, contents, activity and animation are outside
-this first prototype.
+this first release.
 
 ## Build
 
 ```bash
-../bluemap-backport/gradlew --no-daemon \
+gradle --no-daemon \
+  -PbluemapSourcePath=../bluemap-backport \
   -PenderIoJar=/absolute/path/enderio-8.2.11-beta.jar \
   clean check build
 ```
 
 The output JAR belongs in BlueMap's `packs` directory. Removing it and
-restarting restores stock rendering without changing world data. This is a
-staging candidate, not a released artifact.
+restarting restores stock rendering without changing world data. Release
+identity and verification are recorded in `provenance/release.json`.

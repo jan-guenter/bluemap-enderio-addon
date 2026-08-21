@@ -1,0 +1,214 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Immutable annotated v* tag to release or safely resume
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  packages: write
+  attestations: write
+  id-token: write
+
+env:
+  PROMOTION_JAVA_VERSION: '21.0.12+8.0.LTS'
+  RELEASE_TAG: ${{ github.event.inputs.release_tag || github.ref_name }}
+
+concurrency:
+  group: release-maven-${{ github.repository }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - name: Check out tagged source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Verify immutable annotated release identity
+        run: |
+          version="$(sed -n 's/^addon_version=//p' gradle.properties)"
+          test -n "${version}"
+          [[ "${version}" != *-SNAPSHOT ]]
+          [[ "${RELEASE_TAG}" =~ ^v[0-9A-Za-z][0-9A-Za-z.+-]*$ ]]
+          test "${RELEASE_TAG}" = "v${version}"
+          git fetch --force --tags origin
+          test "$(git cat-file -t "refs/tags/${RELEASE_TAG}")" = tag
+          test "$(git rev-parse 'HEAD^{commit}')" = \
+            "$(git rev-parse "refs/tags/${RELEASE_TAG}^{commit}")"
+          git fetch --no-tags origin main:refs/remotes/origin/main
+          git merge-base --is-ancestor HEAD refs/remotes/origin/main
+          echo "VERSION=${version}" >> "${GITHUB_ENV}"
+
+      - name: Check out exact BlueMap backport
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: jan-guenter/BlueMap
+          ref: 9be321df995a1103808621d529eb72773e719d4d
+          path: .ci/bluemap
+          submodules: recursive
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Verify exact detached BlueMap identities
+        run: |
+          test "$(git -C .ci/bluemap rev-parse --abbrev-ref HEAD)" = "HEAD"
+          test "$(git -C .ci/bluemap rev-parse HEAD)" = \
+            "9be321df995a1103808621d529eb72773e719d4d"
+          test "$(git -C .ci/bluemap/api rev-parse HEAD)" = \
+            "285c9a60eff3ac2b0cab308ce1058d1565be0971"
+          git -C .ci/bluemap fetch --force --tags origin
+          test "$(git -C .ci/bluemap describe --exact-match --tags HEAD)" = \
+            "v5.22-agent.backport-5.22-mc1.21.1-2"
+
+      - name: Set up exact promotion Java 21
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
+        with:
+          distribution: temurin
+          java-version: ${{ env.PROMOTION_JAVA_VERSION }}
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.13'
+
+      - name: Set up Gradle 9.6.1
+        uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
+        with:
+          gradle-version: '9.6.1'
+          cache-provider: basic
+          cache-read-only: true
+          validate-wrappers: true
+
+      - name: Acquire exact ephemeral Ender IO input
+        run: |
+          input_dir="${RUNNER_TEMP}/enderio-input"
+          mkdir -p "${input_dir}"
+          curl --fail --location --retry 3 --retry-all-errors \
+            --output "${input_dir}/enderio-8.2.11-beta.jar" \
+            "https://www.curseforge.com/api/v1/mods/64578/files/8192838/download"
+          test "$(stat -c %s \
+            "${input_dir}/enderio-8.2.11-beta.jar")" -eq 6592813
+          sha256sum --check <<SHA256SUMS
+          e01af48907781f2d5ccdfa8d71975b611c33f295be11b7021cb91be06ce8070c  ${input_dir}/enderio-8.2.11-beta.jar
+          SHA256SUMS
+
+      - name: Verify gallery and provenance inputs
+        run: |
+          python3 -m json.tool provenance/upstreams.json >/dev/null
+          python3 -m json.tool provenance/release.json >/dev/null
+          python3 gallery/lint.py
+          bash gallery/package.sh "${RUNNER_TEMP}/gallery-first.zip"
+          bash gallery/package.sh "${RUNNER_TEMP}/gallery-second.zip"
+          cmp "${RUNNER_TEMP}/gallery-first.zip" \
+            "${RUNNER_TEMP}/gallery-second.zip"
+          test "$(stat -c %s "${RUNNER_TEMP}/gallery-first.zip")" -eq 2732
+          sha256sum --check <<SHA256SUMS
+          02e7cfe845645197911d3bf7e15334c4771b81d8450b0db7beda40abaac3d2e6  ${RUNNER_TEMP}/gallery-first.zip
+          SHA256SUMS
+
+      - name: Build and verify accepted bytes
+        run: |
+          input_dir="${RUNNER_TEMP}/enderio-input"
+          gradle --no-daemon \
+            -PbluemapSourcePath=.ci/bluemap \
+            -PenderIoJar="${input_dir}/enderio-8.2.11-beta.jar" \
+            "-PreleaseTag=${RELEASE_TAG}" \
+            clean check build generatePomFileForAddonPublication \
+            generateMetadataFileForAddonPublication \
+            verifyPublicationArtifacts verifyReleaseCandidate
+          test "$(stat -c %s \
+            "build/libs/bluemap-enderio-addon-${VERSION}.jar")" -eq 53872
+          test "$(stat -c %s \
+            "build/libs/bluemap-enderio-addon-${VERSION}-sources.jar")" -eq 40617
+          test "$(stat -c %s build/publications/addon/pom-default.xml)" -eq 1343
+          test "$(stat -c %s build/publications/addon/module.json)" -eq 2817
+          sha256sum --check <<SHA256SUMS
+          4434f9f7da28b157ca83e17ef5a6eaf56fee830c0044cd987e4a78b4f9f2b41a  build/libs/bluemap-enderio-addon-${VERSION}.jar
+          700a28567094bf3d44e53c524dc0481cd3ceb10a162369b26290641af7bb423c  build/libs/bluemap-enderio-addon-${VERSION}-sources.jar
+          a0d326fb533f65acff2ad4f860b81a4200bb179a3d5e58d90ccfc502af8d1a97  build/publications/addon/pom-default.xml
+          f387963a0237a19bec3c02d18697e4ecc1243304c1e885eaae28cc6e69d73429  build/publications/addon/module.json
+          SHA256SUMS
+          python3 tools/verify_staged_equivalence.py \
+            --jar "build/libs/bluemap-enderio-addon-${VERSION}.jar" \
+            --entries provenance/accepted-staging-entries.sha256
+
+      - name: Prepare deterministic release bundle
+        run: |
+          mkdir release
+          cp "build/libs/bluemap-enderio-addon-${VERSION}.jar" release/
+          cp "build/libs/bluemap-enderio-addon-${VERSION}-sources.jar" \
+            release/
+          cp build/publications/addon/pom-default.xml \
+            "release/bluemap-enderio-addon-${VERSION}.pom"
+          cp build/publications/addon/module.json \
+            "release/bluemap-enderio-addon-${VERSION}.module.json"
+          (
+            cd release
+            sha256sum -- \
+              "./bluemap-enderio-addon-${VERSION}-sources.jar" \
+              "./bluemap-enderio-addon-${VERSION}.jar" \
+              "./bluemap-enderio-addon-${VERSION}.module.json" \
+              "./bluemap-enderio-addon-${VERSION}.pom" \
+              > SHA256SUMS
+          )
+          (cd release && sha256sum --check SHA256SUMS)
+          test "$(stat -c %s release/SHA256SUMS)" -eq 448
+          test "$(sha256sum release/SHA256SUMS | cut -d ' ' -f 1)" = \
+            30cc66030715b5ad8c327ae6edbba173f6925eb2dbc7003918b56ce2403acc68
+
+      - name: Create or refresh draft prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "${RELEASE_TAG}" >/dev/null 2>&1; then
+            test "$(gh release view "${RELEASE_TAG}" \
+              --json isDraft --jq '.isDraft')" = true
+            gh release upload "${RELEASE_TAG}" release/* --clobber
+          else
+            gh release create "${RELEASE_TAG}" release/* \
+              --draft \
+              --prerelease \
+              --generate-notes \
+              --title "BlueMap Ender IO Add-on ${VERSION}" \
+              --verify-tag
+          fi
+
+      - name: Attest release assets with Sigstore
+        uses: actions/attest-build-provenance@0f67c3f4856b2e3261c31976d6725780e5e4c373 # v4.1.1
+        with:
+          subject-path: release/*
+
+      - name: Publish Maven package
+        env:
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          gradle --no-daemon \
+            -PbluemapSourcePath=.ci/bluemap \
+            -PenderIoJar="${RUNNER_TEMP}/enderio-input/enderio-8.2.11-beta.jar" \
+            publishAddonPublicationToGitHubPackagesRepository
+
+      - name: Verify draft assets and publish public prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          downloaded="${RUNNER_TEMP}/release-assets"
+          mkdir -p "${downloaded}"
+          gh release download "${RELEASE_TAG}" --dir "${downloaded}"
+          for asset in release/*; do
+            cmp "${asset}" "${downloaded}/$(basename "${asset}")"
+          done
+          gh release edit "${RELEASE_TAG}" --draft=false --prerelease
