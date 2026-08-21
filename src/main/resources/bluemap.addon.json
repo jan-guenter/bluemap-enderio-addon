@@ -1,0 +1,6 @@
+{
+  "id": "bluemap-enderio",
+  "entrypoint": "io.github.janguenter.bluemap.enderio.BlueMapEnderIoAddon",
+  "dependencies": [],
+  "soft-dependencies": []
+}

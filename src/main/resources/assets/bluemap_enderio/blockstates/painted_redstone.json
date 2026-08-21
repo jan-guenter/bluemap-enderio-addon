@@ -1,0 +1,8 @@
+{
+  "variants": {
+    "": {
+      "renderer": "bluemap_enderio:painted_redstone",
+      "model": "bluemap:block/missing"
+    }
+  }
+}

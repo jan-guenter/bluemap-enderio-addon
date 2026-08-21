@@ -1,0 +1,188 @@
+// SPDX-License-Identifier: MIT
+
+plugins {
+    id 'java-library'
+    id 'checkstyle'
+}
+
+group = addon_group
+version = addon_version
+
+base {
+    archivesName = artifact_id
+}
+
+java {
+    toolchain.languageVersion = JavaLanguageVersion.of(21)
+    withSourcesJar()
+}
+
+repositories {
+    mavenCentral()
+    maven {
+        url = uri('https://repo.bluecolored.de/releases')
+        content { includeGroupByRegex('de\\.bluecolored.*') }
+    }
+}
+
+dependencies {
+    compileOnly "de.bluecolored:bluemap-core:${bluemap_version}"
+    compileOnly 'org.jetbrains:annotations:23.0.0'
+    testImplementation "de.bluecolored:bluemap-core:${bluemap_version}"
+    testImplementation 'org.jetbrains:annotations:23.0.0'
+    testImplementation platform('org.junit:junit-bom:5.11.4')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.release = 21
+    options.debug = true
+    options.debugOptions.debugLevel = 'source,lines'
+    options.compilerArgs.addAll(['-Xlint:all', '-Werror'])
+}
+
+tasks.withType(AbstractArchiveTask).configureEach {
+    preserveFileTimestamps = false
+    reproducibleFileOrder = true
+}
+
+tasks.named('test', Test).configure {
+    useJUnitPlatform()
+    def exactJar = providers.gradleProperty('enderIoJar')
+    if (exactJar.isPresent()) {
+        systemProperty 'enderIoJar', exactJar.get()
+    }
+}
+
+checkstyle {
+    toolVersion = '10.18.2'
+    configFile = file('config/checkstyle/checkstyle.xml')
+}
+
+tasks.withType(Checkstyle).configureEach {
+    reports {
+        xml.required = true
+        html.required = true
+    }
+}
+
+tasks.named('jar', Jar).configure {
+    manifest {
+        attributes(
+                'Automatic-Module-Name': 'io.github.janguenter.bluemap.enderio',
+                'Implementation-Title': addon_name,
+                'Implementation-Version': project.version.toString()
+        )
+    }
+    from('LICENSE') {
+        into 'META-INF'
+        rename { 'LICENSE-bluemap-enderio-addon' }
+    }
+    from('NOTICE.md') {
+        into 'META-INF'
+        rename { 'NOTICE-bluemap-enderio-addon.md' }
+    }
+    from('THIRD_PARTY.md') {
+        into 'META-INF'
+        rename { 'THIRD_PARTY-bluemap-enderio-addon.md' }
+    }
+    from('provenance/upstreams.json') { into 'META-INF/bluemap-enderio' }
+}
+
+tasks.named('sourcesJar', Jar).configure {
+    includeEmptyDirs = false
+    from('LICENSE') {
+        into 'META-INF'
+        rename { 'LICENSE-bluemap-enderio-addon' }
+    }
+    from('NOTICE.md') {
+        into 'META-INF'
+        rename { 'NOTICE-bluemap-enderio-addon.md' }
+    }
+    from('THIRD_PARTY.md') {
+        into 'META-INF'
+        rename { 'THIRD_PARTY-bluemap-enderio-addon.md' }
+    }
+    from('provenance/upstreams.json') { into 'META-INF/bluemap-enderio' }
+}
+
+tasks.register('verifyPinnedArtifact') {
+    def exactJar = providers.gradleProperty('enderIoJar')
+    if (exactJar.isPresent()) {
+        inputs.file(exactJar)
+    }
+    doLast {
+        if (!exactJar.isPresent()) {
+            throw new GradleException(
+                    'Set -PenderIoJar to the exact All the Mons 1.2.0 Ender IO JAR.'
+            )
+        }
+        def jarFile = file(exactJar.get())
+        def digest = java.security.MessageDigest.getInstance('SHA-256')
+                .digest(jarFile.bytes).encodeHex().toString()
+        if (jarFile.length() != 6592813L
+                || digest != 'e01af48907781f2d5ccdfa8d71975b611c33f295be11b7021cb91be06ce8070c') {
+            throw new GradleException(
+                    "Pinned Ender IO artifact mismatch: ${jarFile.length()} bytes, ${digest}"
+            )
+        }
+    }
+}
+
+tasks.register('verifyProductionJar') {
+    dependsOn tasks.named('jar')
+    def productionJar = tasks.named('jar', Jar).flatMap { it.archiveFile }
+    inputs.file(productionJar)
+    doLast {
+        def zip = new java.util.zip.ZipFile(inputs.files.singleFile)
+        try {
+            def entries = zip.entries().findAll { !it.directory }.collect { it.name }
+            def required = [
+                    'bluemap.addon.json',
+                    'assets/bluemap_enderio/blockstates/painted_redstone.json',
+                    'bluemap-enderio/profiles/enderio/8.2.11-beta/profile.json',
+                    'META-INF/LICENSE-bluemap-enderio-addon',
+                    'META-INF/NOTICE-bluemap-enderio-addon.md',
+                    'META-INF/THIRD_PARTY-bluemap-enderio-addon.md',
+                    'META-INF/bluemap-enderio/upstreams.json'
+            ]
+            def missing = required.findAll { !entries.contains(it) }
+            if (!missing.isEmpty()) {
+                throw new GradleException("Production JAR is missing: ${missing}")
+            }
+            def addon = new groovy.json.JsonSlurper().parseText(
+                    zip.getInputStream(zip.getEntry('bluemap.addon.json')).getText('UTF-8')
+            )
+            if (addon.id != addon_id
+                    || addon.entrypoint != 'io.github.janguenter.bluemap.enderio.BlueMapEnderIoAddon'
+                    || addon.dependencies != [] || addon['soft-dependencies'] != []) {
+                throw new GradleException('BlueMap add-on metadata mismatch')
+            }
+            def forbidden = entries.findAll {
+                it.endsWith('.jar')
+                        || it == 'META-INF/neoforge.mods.toml'
+                        || it == 'fabric.mod.json'
+                        || it.endsWith('.mixins.json')
+                        || it.startsWith('de/bluecolored/')
+                        || it.startsWith('com/enderio/')
+                        || it.startsWith('net/minecraft/')
+                        || it.startsWith('net/neoforged/')
+                        || it.startsWith('assets/enderio/')
+                        || it.endsWith('.png')
+                        || it.endsWith('.mcmeta')
+            }
+            if (!forbidden.isEmpty()) {
+                throw new GradleException("Production JAR contains forbidden entries: ${forbidden}")
+            }
+        } finally {
+            zip.close()
+        }
+    }
+}
+
+tasks.named('check').configure {
+    dependsOn tasks.named('verifyPinnedArtifact')
+    dependsOn tasks.named('verifyProductionJar')
+}

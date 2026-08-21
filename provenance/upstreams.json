@@ -1,0 +1,40 @@
+{
+  "schema": 1,
+  "profile": "enderio-8.2.11-beta",
+  "pack": {
+    "name": "All the Mons",
+    "version": "1.2.0",
+    "commit": "c7bb230f21d14d26859d0b92548f089b3a493ad9",
+    "exportSha256": "1d37df201daddecf5454115f5205cca15ca6ab84ed102bcc2e312f4c14876e5d",
+    "minecraft": "1.21.1",
+    "neoforge": "21.1.248"
+  },
+  "bluemap": {
+    "version": "5.22-agent.backport-5.22-mc1.21.1-2",
+    "commit": "9be321df995a1103808621d529eb72773e719d4d",
+    "license": "MIT",
+    "use": "compile-only internal renderer API"
+  },
+  "enderio": {
+    "version": "8.2.11-beta",
+    "artifact": "enderio-8.2.11-beta.jar",
+    "size": 6592813,
+    "sha1": "87b7218eed2e2f325ddcb8d3ce94a67aabaa17ca",
+    "sha256": "e01af48907781f2d5ccdfa8d71975b611c33f295be11b7021cb91be06ce8070c",
+    "curseforgeProject": 64578,
+    "curseforgeFile": 8192838,
+    "artifactTier": "T2_ARTIFACT_EXACT",
+    "exactPublishedSourceAvailable": true,
+    "sourceCommit": null,
+    "sourceCorrelation": "exact published source archive; Git tag and commit not correlated",
+    "runtimeLicenseDeclaration": "CC0",
+    "referenceRepositoryLicense": "The Unlicense",
+    "sourceUseLane": "owner-MIT bootstrap adaptation and independent resource interpretation; no Ender IO source adaptation"
+  },
+  "scope": {
+    "host": "enderio:painted_redstone_block",
+    "blockEntity": "enderio:single_painted",
+    "persistedField": "Paint"
+  },
+  "redistribution": "No Ender IO assets, classes, binaries, source, or captured meshes are packaged."
+}

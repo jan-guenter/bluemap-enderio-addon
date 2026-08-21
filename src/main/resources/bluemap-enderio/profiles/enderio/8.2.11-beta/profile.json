@@ -1,0 +1,14 @@
+{
+  "profile": "enderio-8.2.11-beta",
+  "modId": "enderio",
+  "version": "8.2.11-beta",
+  "artifact": {
+    "file": "enderio-8.2.11-beta.jar",
+    "size": 6592813,
+    "sha1": "87b7218eed2e2f325ddcb8d3ce94a67aabaa17ca",
+    "sha256": "e01af48907781f2d5ccdfa8d71975b611c33f295be11b7021cb91be06ce8070c"
+  },
+  "hosts": ["enderio:painted_redstone_block"],
+  "blockEntities": ["enderio:single_painted"],
+  "persistedFields": ["Paint"]
+}
