@@ -5,7 +5,7 @@
  * Functional Storage add-on. No Ender IO source or asset is used.
  */
 
-package io.github.janguenter.bluemap.enderio.adapter.bluemap522;
+package io.github.janguenter.bluemap.enderio.adapter.bluemap523;
 
 import com.flowpowered.math.vector.Vector3f;
 import com.flowpowered.math.vector.Vector4f;

@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.1.0-alpha.2 - 2026-08-30
+
+- Move the internal adapter boundary to the exact BlueMap 5.23 feature
+  backport at commit `7e07f4e74ec1e92a6ead9aa1e66054af3e133aac`.
+- Replace private runtime compatibility, registry, extension-type, and
+  synthetic-dispatch helpers with four pinned Adapter-API sources compiled
+  into this add-on.
+- Keep the exact Ender IO profile, one block-entity registration, admission,
+  rendering, diagnostics, and stock-fallback behavior unchanged.
+
 ## 0.1.0-alpha.1 - 2026-08-21
 
 - Add an exact-artifact BlueMap renderer for Ender IO's painted redstone block.

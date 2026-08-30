@@ -2,7 +2,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-package io.github.janguenter.bluemap.enderio.adapter.bluemap522;
+package io.github.janguenter.bluemap.enderio.adapter.bluemap523;
 
 import de.bluecolored.bluenbt.NBTName;
 import org.junit.jupiter.api.Test;

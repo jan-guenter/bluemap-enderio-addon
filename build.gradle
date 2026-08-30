@@ -14,6 +14,10 @@ base {
     archivesName = artifact_id
 }
 
+sourceSets {
+    main.java.srcDir 'modules/bluemap-addon-adapter-api/src/main/java'
+}
+
 repositories {
     mavenCentral()
     maven {
@@ -61,6 +65,7 @@ tasks.named('jar', Jar).configure {
         into 'META-INF'
         rename { 'LICENSE-bluemap-enderio-addon' }
     }
+    from('LICENSE-BlueMap') { into 'META-INF' }
     from('NOTICE.md') {
         into 'META-INF'
         rename { 'NOTICE-bluemap-enderio-addon.md' }
@@ -78,6 +83,7 @@ tasks.named('sourcesJar', Jar).configure {
         into 'META-INF'
         rename { 'LICENSE-bluemap-enderio-addon' }
     }
+    from('LICENSE-BlueMap') { into 'META-INF' }
     from('NOTICE.md') {
         into 'META-INF'
         rename { 'NOTICE-bluemap-enderio-addon.md' }
@@ -91,6 +97,42 @@ tasks.named('sourcesJar', Jar).configure {
 
 def productionJar = tasks.named('jar', Jar).flatMap { it.archiveFile }
 def publishedSourcesJar = tasks.named('sourcesJar', Jar).flatMap { it.archiveFile }
+def sharedAdapterApiPackage =
+        'io/github/janguenter/bluemap/addon/adapter/api/bluemap523/'
+def sharedAdapterApiClasses = [
+        'BlueMapRuntimeCompatibility.class',
+        'RegistryGuard.class',
+        'ResourceExtensionType.class',
+        'SyntheticDispatch.class'
+].collect { sharedAdapterApiPackage + it }
+def sharedAdapterApiSources = [
+        'BlueMapRuntimeCompatibility.java',
+        'RegistryGuard.java',
+        'ResourceExtensionType.java',
+        'SyntheticDispatch.java'
+].collect { sharedAdapterApiPackage + it }
+def legacyAdapterPackage =
+        'io/github/janguenter/bluemap/enderio/adapter/bluemap522/'
+def displacedAdapterHelpers = [
+        'io/github/janguenter/bluemap/enderio/adapter/bluemap523/AdapterCompatibility',
+        'io/github/janguenter/bluemap/enderio/adapter/bluemap523/EnderIoResourceExtensionType'
+]
+
+tasks.register('verifySyntheticDispatchFixture') {
+    inputs.file('src/main/resources/assets/bluemap_enderio/blockstates/painted_redstone.json')
+    doLast {
+        def fixture = new groovy.json.JsonSlurper().parse(inputs.files.singleFile)
+        def expectedVariant = [
+                renderer: 'bluemap_enderio:painted_redstone',
+                model: 'bluemap:block/missing'
+        ]
+        if (fixture.keySet() != ['variants'] as Set
+                || fixture.variants.keySet() != [''] as Set
+                || fixture.variants[''] != expectedVariant) {
+            throw new GradleException('Synthetic dispatch fixture changed')
+        }
+    }
+}
 
 tasks.register('verifyPinnedArtifact') {
     def exactJar = providers.gradleProperty('enderIoJar')
@@ -127,13 +169,21 @@ tasks.register('verifyProductionJar') {
                     'assets/bluemap_enderio/blockstates/painted_redstone.json',
                     'bluemap-enderio/profiles/enderio/8.2.11-beta/profile.json',
                     'META-INF/LICENSE-bluemap-enderio-addon',
+                    'META-INF/LICENSE-BlueMap',
                     'META-INF/NOTICE-bluemap-enderio-addon.md',
                     'META-INF/THIRD_PARTY-bluemap-enderio-addon.md',
                     'META-INF/bluemap-enderio/upstreams.json'
             ]
+            required.addAll(sharedAdapterApiClasses)
             def missing = required.findAll { !entries.contains(it) }
-            if (!missing.isEmpty()) {
-                throw new GradleException("Production JAR is missing: ${missing}")
+            def nonUniqueShared = sharedAdapterApiClasses.findAll { shared ->
+                entries.count { it == shared } != 1
+            }
+            if (!missing.isEmpty() || !nonUniqueShared.isEmpty()) {
+                throw new GradleException(
+                        "Production JAR shared boundary mismatch: missing=${missing}, "
+                                + "nonUnique=${nonUniqueShared}"
+                )
             }
             def addon = new groovy.json.JsonSlurper().parseText(
                     zip.getInputStream(zip.getEntry('bluemap.addon.json')).getText('UTF-8')
@@ -153,6 +203,13 @@ tasks.register('verifyProductionJar') {
                         || it.startsWith('net/minecraft/')
                         || it.startsWith('net/neoforged/')
                         || it.startsWith('assets/enderio/')
+                        || it.startsWith(legacyAdapterPackage)
+                        || displacedAdapterHelpers.any { helper -> it.startsWith(helper) }
+                        || (it.startsWith(sharedAdapterApiPackage)
+                            && !sharedAdapterApiClasses.contains(it))
+                        || (it.endsWith('.class')
+                            && !it.startsWith('io/github/janguenter/bluemap/enderio/')
+                            && !sharedAdapterApiClasses.contains(it))
                         || it.endsWith('.png')
                         || it.endsWith('.mcmeta')
             }
@@ -174,19 +231,25 @@ tasks.register('verifySourcesJar') {
             def entries = zip.entries().findAll { !it.directory }.collect { it.name }
             def required = [
                     'io/github/janguenter/bluemap/enderio/BlueMapEnderIoAddon.java',
-                    'io/github/janguenter/bluemap/enderio/adapter/bluemap522/EnderIoPaintedBlockRenderer.java',
+                    'io/github/janguenter/bluemap/enderio/adapter/bluemap523/EnderIoPaintedBlockRenderer.java',
                     'bluemap.addon.json',
                     'assets/bluemap_enderio/blockstates/painted_redstone.json',
                     'bluemap-enderio/profiles/enderio/8.2.11-beta/profile.json',
                     'META-INF/LICENSE-bluemap-enderio-addon',
+                    'META-INF/LICENSE-BlueMap',
                     'META-INF/NOTICE-bluemap-enderio-addon.md',
                     'META-INF/THIRD_PARTY-bluemap-enderio-addon.md',
                     'META-INF/bluemap-enderio/upstreams.json'
             ]
+            required.addAll(sharedAdapterApiSources)
             def missing = required.findAll { !entries.contains(it) }
+            def nonUniqueShared = sharedAdapterApiSources.findAll { shared ->
+                entries.count { it == shared } != 1
+            }
             def projectJava = entries.findAll { it.endsWith('.java') }
             def foreignJava = projectJava.findAll {
                 !it.startsWith('io/github/janguenter/bluemap/enderio/')
+                        && !sharedAdapterApiSources.contains(it)
             }
             def forbidden = entries.findAll {
                 it.endsWith('.class')
@@ -198,13 +261,19 @@ tasks.register('verifySourcesJar') {
                         || it.startsWith('net/minecraft/')
                         || it.startsWith('net/neoforged/')
                         || it.startsWith('gallery/')
+                        || it.startsWith(legacyAdapterPackage)
+                        || displacedAdapterHelpers.any { helper -> it == "${helper}.java" }
+                        || (it.startsWith(sharedAdapterApiPackage)
+                            && !sharedAdapterApiSources.contains(it))
             }
             if (!missing.isEmpty()
+                    || !nonUniqueShared.isEmpty()
                     || projectJava.isEmpty()
                     || !foreignJava.isEmpty()
                     || !forbidden.isEmpty()) {
                 throw new GradleException(
                         "Sources JAR boundary mismatch: missing=${missing}, "
+                                + "nonUnique=${nonUniqueShared}, "
                                 + "foreignJava=${foreignJava}, forbidden=${forbidden}"
                 )
             }
@@ -259,9 +328,12 @@ tasks.register('verifyAcceptedSourcesJar') {
 tasks.register('verifyStagedEquivalence', Exec) {
     dependsOn tasks.named('jar')
     doFirst {
-        commandLine 'python3', 'tools/verify_staged_equivalence.py',
+        environment 'PYTHONPATH', file('tooling/bluemap-addon-toolkit/src')
+        commandLine 'python3', '-m', 'bluemap_addon_toolkit',
+                'jar-entries', 'verify',
                 '--jar', productionJar.get().asFile,
-                '--entries', 'provenance/accepted-staging-entries.sha256'
+                '--entries', 'provenance/accepted-staging-entries.sha256',
+                '--expected-version', project.version.toString()
     }
 }
 
@@ -269,6 +341,7 @@ tasks.named('check').configure {
     dependsOn tasks.named('verifyPinnedArtifact')
     dependsOn tasks.named('verifyProductionJar')
     dependsOn tasks.named('verifySourcesJar')
+    dependsOn tasks.named('verifySyntheticDispatchFixture')
 }
 
 tasks.register('verifyPublicationArtifacts') {
