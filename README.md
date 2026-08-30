@@ -1,6 +1,7 @@
 # BlueMap Ender IO Add-on
 
-A narrow Java 21 BlueMap 5.22 add-on for Ender IO's persisted painted
+A narrow Java 21 add-on for the exact BlueMap 5.23 feature backport and
+Ender IO's persisted painted
 redstone block.
 
 The exact All the Mons 1.2.0 profile activates only for
@@ -21,11 +22,22 @@ Conduits, conduit facades, all other painted shapes, double-slab `Paint2`,
 Athena models, machines, fluids, contents, activity and animation are outside
 this first release.
 
+Version `0.1.0-alpha.2` compiles the pinned Adapter-API source module's four
+Java files into the add-on. They provide the exact feature-backport runtime
+identity check, registry guards, resource-extension factory, and synthetic
+dispatch validation. The standalone module JAR is not installed or nested.
+The gitlink pins `v0.1.0-alpha.2` commit
+`e81f08bc4bfbf02d810ec8949a019130e2e61634`
+and Java source tree `2f974c9bb2ba13888d69682f86f30f58922d30eb`.
+The settings preflight rejects an uninitialized, changed, or dirty checkout.
+
 ## Build
 
 ```bash
+git submodule update --init --recursive -- \
+  tooling/bluemap-addon-toolkit modules/bluemap-addon-adapter-api
 gradle --no-daemon \
-  -PbluemapSourcePath=../bluemap-backport \
+  -PbluemapSourcePath=/path/to/exact/feature-backport \
   -PenderIoJar=/absolute/path/enderio-8.2.11-beta.jar \
   clean check build
 ```
