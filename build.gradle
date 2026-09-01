@@ -46,10 +46,23 @@ tasks.withType(Zip).configureEach {
 }
 
 tasks.named('test', Test).configure {
+    exclude '**/BlueNbtHotAddIsolationTest.class'
     def exactJar = providers.gradleProperty('enderIoJar')
     if (exactJar.isPresent()) {
         systemProperty 'enderIoJar', exactJar.get()
     }
+}
+
+tasks.register('hotAddBlueNbtTest', Test) {
+    description = 'Runs the shared-BlueNBT hot-add recovery oracle in an isolated JVM.'
+    group = LifecycleBasePlugin.VERIFICATION_GROUP
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    filter {
+        includeTestsMatching '*BlueNbtHotAddIsolationTest'
+    }
+    forkEvery = 1
+    maxParallelForks = 1
 }
 
 tasks.named('jar', Jar).configure {
@@ -166,6 +179,7 @@ tasks.register('verifyProductionJar') {
             def entries = zip.entries().findAll { !it.directory }.collect { it.name }
             def required = [
                     'bluemap.addon.json',
+                    'io/github/janguenter/bluemap/enderio/adapter/bluemap523/BlueNbtHotAddSupport.class',
                     'assets/bluemap_enderio/blockstates/painted_redstone.json',
                     'bluemap-enderio/profiles/enderio/8.2.11-beta/profile.json',
                     'META-INF/LICENSE-bluemap-enderio-addon',
@@ -231,6 +245,7 @@ tasks.register('verifySourcesJar') {
             def entries = zip.entries().findAll { !it.directory }.collect { it.name }
             def required = [
                     'io/github/janguenter/bluemap/enderio/BlueMapEnderIoAddon.java',
+                    'io/github/janguenter/bluemap/enderio/adapter/bluemap523/BlueNbtHotAddSupport.java',
                     'io/github/janguenter/bluemap/enderio/adapter/bluemap523/EnderIoPaintedBlockRenderer.java',
                     'bluemap.addon.json',
                     'assets/bluemap_enderio/blockstates/painted_redstone.json',
@@ -338,6 +353,7 @@ tasks.register('verifyStagedEquivalence', Exec) {
 }
 
 tasks.named('check').configure {
+    dependsOn tasks.named('hotAddBlueNbtTest')
     dependsOn tasks.named('verifyPinnedArtifact')
     dependsOn tasks.named('verifyProductionJar')
     dependsOn tasks.named('verifySourcesJar')

@@ -34,9 +34,14 @@ final class CanonicalPaintTargetResolver {
     private static final int MAX_VARIANTS = 16;
 
     private final ResourcePack resourcePack;
+    private final EnderIoResourceExtension extension;
 
-    CanonicalPaintTargetResolver(ResourcePack resourcePack) {
+    CanonicalPaintTargetResolver(
+            ResourcePack resourcePack,
+            EnderIoResourceExtension extension
+    ) {
         this.resourcePack = resourcePack;
+        this.extension = extension;
     }
 
     Optional<VariantSet> resolve(Key target) {
@@ -48,7 +53,11 @@ final class CanonicalPaintTargetResolver {
         }
         for (Variant variant : variants.getVariants()) {
             Model model = variant.getModel().getResource(resourcePack.getModels()::get);
-            if (!canonicalVariant(variant, model) || !allTexturesOpaque(model)) {
+            if (extension == null
+                    || !extension.originallyRenderedBy(
+                            variant, BlockRendererType.DEFAULT)
+                    || !canonicalVariant(variant, model, true)
+                    || !allTexturesOpaque(model)) {
                 return Optional.empty();
             }
         }
@@ -72,8 +81,19 @@ final class CanonicalPaintTargetResolver {
     }
 
     static boolean canonicalVariant(Variant variant, Model model) {
+        return canonicalVariant(
+                variant, model,
+                variant != null && variant.getRenderer() == BlockRendererType.DEFAULT
+        );
+    }
+
+    static boolean canonicalVariant(
+            Variant variant,
+            Model model,
+            boolean originallyDefault
+    ) {
         if (variant == null
-                || variant.getRenderer() != BlockRendererType.DEFAULT
+                || !originallyDefault
                 || ResourcePack.MISSING_BLOCK_MODEL.equals(variant.getModel())
                 || variant.isUvlock()
                 || variant.getX() != 0F

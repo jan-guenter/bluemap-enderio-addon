@@ -38,7 +38,9 @@ final class EnderIoPaintedBlockRenderer implements BlockRenderer {
         this.resourcePack = resourcePack;
         this.runtime = runtime;
         this.resources = new ResourceModelRenderer(resourcePack, textures, settings);
-        this.targets = new CanonicalPaintTargetResolver(resourcePack);
+        this.targets = new CanonicalPaintTargetResolver(
+                resourcePack, BlueMap523Adapter.extension(resourcePack)
+        );
     }
 
     @Override
@@ -75,22 +77,30 @@ final class EnderIoPaintedBlockRenderer implements BlockRenderer {
         if (!EnderIo8211Profile.HOST_ID.equals(
                 block.getBlockState().getId().getFormatted())
                 || !block.getBlockState().getProperties().isEmpty()) {
+            runtime.report("fallback-host-state");
             return false;
         }
         EnderIoBlockEntityData data = block.getBlockEntity()
                 instanceof EnderIoBlockEntityData found ? found : null;
-        String blockEntityId = data == null || data.getId() == null
+        if (data == null) {
+            runtime.report("fallback-block-entity-projection");
+            return false;
+        }
+        String blockEntityId = data.getId() == null
                 ? null : data.getId().getFormatted();
         if (!EnderIo8211Profile.matches(
                 block.getBlockState().getId().getFormatted(), blockEntityId)) {
+            runtime.report("fallback-block-entity-id");
             return false;
         }
         Optional<Key> paint = decoder.decode(data);
         if (paint.isEmpty()) {
+            runtime.report("fallback-paint-snapshot");
             return false;
         }
         Optional<VariantSet> targetVariants = targets.resolve(paint.orElseThrow());
         if (targetVariants.isEmpty()) {
+            runtime.report("fallback-target-model");
             return false;
         }
         targetVariants.orElseThrow().forEach(

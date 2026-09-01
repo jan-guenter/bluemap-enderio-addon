@@ -6,6 +6,7 @@ package io.github.janguenter.bluemap.enderio.adapter.bluemap523;
 
 import com.flowpowered.math.vector.Vector3f;
 import com.flowpowered.math.vector.Vector4f;
+import de.bluecolored.bluemap.core.map.hires.block.BlockRendererType;
 import de.bluecolored.bluemap.core.resources.ResourcePath;
 import de.bluecolored.bluemap.core.resources.pack.resourcepack.blockstate.BlockState;
 import de.bluecolored.bluemap.core.resources.pack.resourcepack.blockstate.Variant;
@@ -100,6 +101,17 @@ class CanonicalPaintTargetResolverTest {
         assertFalse(CanonicalPaintTargetResolver.canonicalVariant(
                 variant, canonicalModel(Rotation.ZERO, true, 0, false)
         ));
+    }
+
+    @Test
+    void preservesEligibilityAfterAnotherAddonWrapsAnOriginallyDefaultVariant() {
+        Variant wrapped = new Variant(MODEL_PATH);
+        Model model = canonicalModel(Rotation.ZERO, true, 0, true);
+        wrapped.setRenderer(BlockRendererType.MISSING);
+
+        assertFalse(CanonicalPaintTargetResolver.canonicalVariant(wrapped, model));
+        assertTrue(CanonicalPaintTargetResolver.canonicalVariant(wrapped, model, true));
+        assertFalse(CanonicalPaintTargetResolver.canonicalVariant(wrapped, model, false));
     }
 
     @Test
