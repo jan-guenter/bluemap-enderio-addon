@@ -22,6 +22,11 @@ Conduits, conduit facades, all other painted shapes, double-slab `Paint2`,
 Athena models, machines, fluids, contents, activity and animation are outside
 this first release.
 
+Version `0.1.0-alpha.3` keeps painted targets working in a combined add-on
+pack. It records whether a target used BlueMap's default renderer before
+another add-on wraps that target, and refreshes BlueNBT's resolver caches after
+registering Ender IO's persisted `Paint` projection.
+
 Version `0.1.0-alpha.2` compiles the pinned Adapter-API source module's four
 Java files into the add-on. They provide the exact feature-backport runtime
 identity check, registry guards, resource-extension factory, and synthetic

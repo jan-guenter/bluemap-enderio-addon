@@ -4,8 +4,10 @@
 
 package io.github.janguenter.bluemap.enderio.adapter.bluemap523;
 
+import de.bluecolored.bluemap.core.map.hires.block.BlockRendererType;
 import de.bluecolored.bluemap.core.resources.pack.resourcepack.ResourcePack;
 import de.bluecolored.bluemap.core.resources.pack.resourcepack.ResourcePackExtension;
+import de.bluecolored.bluemap.core.resources.pack.resourcepack.blockstate.Variant;
 import de.bluecolored.bluemap.core.util.Key;
 import de.bluecolored.bluemap.core.world.BlockProperties;
 import de.bluecolored.bluemap.core.world.BlockState;
@@ -14,6 +16,9 @@ import io.github.janguenter.bluemap.enderio.profile.EnderIo8211Profile;
 import io.github.janguenter.bluemap.enderio.profile.ExactEnderIoArtifactDetector;
 
 import java.nio.file.Path;
+import java.util.Collections;
+import java.util.IdentityHashMap;
+import java.util.Map;
 
 /** Exact-artifact activation and one-host synthetic routing. */
 final class EnderIoResourceExtension implements ResourcePackExtension {
@@ -22,6 +27,8 @@ final class EnderIoResourceExtension implements ResourcePackExtension {
 
     private final ResourcePack resourcePack;
     private final EnderIoRuntime runtime;
+    private volatile Map<Variant, BlockRendererType> originalRenderers = Map.of();
+    private boolean rendererSnapshotCaptured;
 
     EnderIoResourceExtension(ResourcePack resourcePack, EnderIoRuntime runtime) {
         this.resourcePack = resourcePack;
@@ -30,6 +37,7 @@ final class EnderIoResourceExtension implements ResourcePackExtension {
 
     @Override
     public void loadResources(Iterable<Path> roots) {
+        captureOriginalRenderers();
         if (Boolean.getBoolean("bluemap.enderio.disabled")) {
             runtime.inactive("operator-disabled");
             return;
@@ -46,7 +54,29 @@ final class EnderIoResourceExtension implements ResourcePackExtension {
             runtime.inactive("synthetic-dispatch-invalid");
             return;
         }
+        if (!BlueNbtHotAddSupport.retainsPersistedPaint()) {
+            runtime.inactive("bluenbt-retention-probe-failed");
+            return;
+        }
         runtime.activate();
+    }
+
+    boolean originallyRenderedBy(Variant variant, BlockRendererType renderer) {
+        return originalRenderers.get(variant) == renderer;
+    }
+
+    void captureOriginalRenderers() {
+        if (rendererSnapshotCaptured) {
+            return;
+        }
+        IdentityHashMap<Variant, BlockRendererType> captured = new IdentityHashMap<>();
+        resourcePack.getBlockStates().values().forEach(state -> state.forEach(variant -> {
+            if (variant.getRenderer() == BlockRendererType.DEFAULT) {
+                captured.put(variant, BlockRendererType.DEFAULT);
+            }
+        }));
+        originalRenderers = Collections.unmodifiableMap(captured);
+        rendererSnapshotCaptured = true;
     }
 
     @Override

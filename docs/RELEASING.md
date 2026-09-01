@@ -11,7 +11,7 @@ local Ender IO artifact:
 ```bash
 gradle --no-daemon \
   -PenderIoJar=/absolute/path/enderio-8.2.11-beta.jar \
-  -PreleaseTag=v0.1.0-alpha.2 \
+  -PreleaseTag=v0.1.0-alpha.3 \
   clean check build generatePomFileForAddonPublication \
   generateMetadataFileForAddonPublication verifyPublicationArtifacts \
   verifyReleaseCandidate

@@ -128,16 +128,16 @@ jobs:
             generateMetadataFileForAddonPublication \
             verifyPublicationArtifacts verifyReleaseCandidate
           test "$(stat -c %s \
-            "build/libs/bluemap-enderio-addon-${VERSION}.jar")" -eq 58994
+            "build/libs/bluemap-enderio-addon-${VERSION}.jar")" -eq 67131
           test "$(stat -c %s \
-            "build/libs/bluemap-enderio-addon-${VERSION}-sources.jar")" -eq 45928
+            "build/libs/bluemap-enderio-addon-${VERSION}-sources.jar")" -eq 51775
           test "$(stat -c %s build/publications/addon/pom-default.xml)" -eq 1343
           test "$(stat -c %s build/publications/addon/module.json)" -eq 2817
           sha256sum --check <<SHA256SUMS
-          9b999235340f6ebc9973053b16ccd5c53aa04966076558457d82e1bbaf708cd6  build/libs/bluemap-enderio-addon-${VERSION}.jar
-          29d5280d30119b986dd85291b316d754c889f1d444e282ff95699e7d2535c5a8  build/libs/bluemap-enderio-addon-${VERSION}-sources.jar
-          d6035bd606438f03d8d84999b911a70c9b803fe0e88417b95aa3210592502311  build/publications/addon/pom-default.xml
-          15efc5326b4ab37b8669b58fe2dfc11c7518a8f11a84683fda82a44e0211fd48  build/publications/addon/module.json
+          2f7b61a7bdd53bc5cce8181e2575e31b681d26ea734c9e6563c1af7c0fee7d1c  build/libs/bluemap-enderio-addon-${VERSION}.jar
+          e83cf1420e27fbc5e9cd1df2ed0c5f27bc6ca8974867eb3b33cc501ad8da1646  build/libs/bluemap-enderio-addon-${VERSION}-sources.jar
+          6cdc740cbaf72cade03c7107bb002878eb9a2035dcf36770fe38876c269a91df  build/publications/addon/pom-default.xml
+          e3e231410f6cc441f28175e84ac1e7b56448d3551ad122d1be8b3a0e1821ed59  build/publications/addon/module.json
           SHA256SUMS
           PYTHONPATH=tooling/bluemap-addon-toolkit/src \
             python3 -m bluemap_addon_toolkit jar-entries verify \
@@ -167,7 +167,7 @@ jobs:
           (cd release && sha256sum --check SHA256SUMS)
           test "$(stat -c %s release/SHA256SUMS)" -eq 448
           test "$(sha256sum release/SHA256SUMS | cut -d ' ' -f 1)" = \
-            d47761c9437739e9f06c209b2d45196fa90866a35a6cc049ad3da4e56a018b12
+            f470f57f60685ca678da861ccf2e7dfe3eb3f099fada0ccd4c338e82b3886a42
 
       - name: Create or refresh draft prerelease
         env:

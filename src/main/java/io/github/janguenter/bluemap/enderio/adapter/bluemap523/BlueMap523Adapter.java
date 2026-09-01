@@ -47,10 +47,18 @@ public final class BlueMap523Adapter {
             RUNTIME.inactive("registry-registration-failed");
             return false;
         }
+        if (!BlueNbtHotAddSupport.refreshSharedDeserializerCache()) {
+            RUNTIME.inactive("bluenbt-cache-refresh-failed");
+            return false;
+        }
         return true;
     }
 
     static BlockRendererType renderer() {
         return RENDERER;
+    }
+
+    static EnderIoResourceExtension extension(ResourcePack resourcePack) {
+        return resourcePack.getExtension(EXTENSION);
     }
 }
