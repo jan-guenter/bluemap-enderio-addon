@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.0-alpha.3 - 2026-09-02
+
+- Preserve painted target eligibility when another installed add-on wraps an
+  originally default BlueMap block-state renderer.
+- Refresh BlueNBT's shared resolver caches after registering the Ender IO
+  block-entity projection and verify that the persisted `Paint` field survives.
+- Add bounded fallback diagnostics and combined-pack regression tests.
+
 ## 0.1.0-alpha.2 - 2026-08-30
 
 - Move the internal adapter boundary to the exact BlueMap 5.23 feature

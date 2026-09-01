@@ -38,7 +38,7 @@ git submodule update --init --recursive -- \
 gradle --no-daemon \
   -PbluemapSourcePath=/path/to/exact/feature-backport \
   -PenderIoJar=/absolute/path/enderio-8.2.11-beta.jar \
-  -PreleaseTag=v0.1.0-alpha.2 \
+  -PreleaseTag=v0.1.0-alpha.3 \
   clean check build generatePomFileForAddonPublication \
   generateMetadataFileForAddonPublication verifyPublicationArtifacts \
   verifyReleaseCandidate

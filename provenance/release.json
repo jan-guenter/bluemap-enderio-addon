@@ -1,17 +1,17 @@
 {
   "schema_version": 1,
   "status": "owner-accepted-release-candidate",
-  "version": "0.1.0-alpha.2",
-  "release_date": "2026-08-30",
+  "version": "0.1.0-alpha.3",
+  "release_date": "2026-09-02",
   "repository": "https://github.com/jan-guenter/bluemap-enderio-addon",
-  "tag": "v0.1.0-alpha.2",
-  "maven_coordinate": "io.github.jan-guenter:bluemap-enderio-addon:0.1.0-alpha.2",
+  "tag": "v0.1.0-alpha.3",
+  "maven_coordinate": "io.github.jan-guenter:bluemap-enderio-addon:0.1.0-alpha.3",
   "owner_accepted_staging": {
-    "commit": "c145a3f63467ca3ca911be68a253da0dae17b6cb",
-    "tree": "d1c2d92b9990d3844b6d6afe0f0433f739aee0b4",
-    "production_jar_size": 27239,
-    "production_jar_sha256": "4bc03703fcce021f00a7d9a7508584b8d6e32ff706b0364d81d8c980a7d3d0b9",
-    "accepted_at": "2026-08-21",
+    "commit": "41e0da616dd89f6a45bb05cad566b960fb29c825",
+    "tree": "fb178f40772b137b4d946dcb260e623022e75cb1",
+    "production_jar_size": 67131,
+    "production_jar_sha256": "2f7b61a7bdd53bc5cce8181e2575e31b681d26ea734c9e6563c1af7c0fee7d1c",
+    "accepted_at": "2026-09-02",
     "visual_acceptance": true,
     "gallery_archive_size": 2732,
     "gallery_archive_sha256": "02e7cfe845645197911d3bf7e15334c4771b81d8450b0db7beda40abaac3d2e6",
@@ -19,19 +19,30 @@
     "failures_per_phase": 0
   },
   "final_release_artifacts": {
-    "production_jar": {"file_name": "bluemap-enderio-addon-0.1.0-alpha.2.jar", "size": 58994, "sha256": "9b999235340f6ebc9973053b16ccd5c53aa04966076558457d82e1bbaf708cd6"},
-    "sources_jar": {"file_name": "bluemap-enderio-addon-0.1.0-alpha.2-sources.jar", "size": 45928, "sha256": "29d5280d30119b986dd85291b316d754c889f1d444e282ff95699e7d2535c5a8"},
-    "pom": {"file_name": "bluemap-enderio-addon-0.1.0-alpha.2.pom", "size": 1343, "sha256": "d6035bd606438f03d8d84999b911a70c9b803fe0e88417b95aa3210592502311"},
-    "gradle_module": {"file_name": "bluemap-enderio-addon-0.1.0-alpha.2.module.json", "size": 2817, "sha256": "15efc5326b4ab37b8669b58fe2dfc11c7518a8f11a84683fda82a44e0211fd48"},
-    "sha256sums": {"file_name": "SHA256SUMS", "size": 448, "sha256": "d47761c9437739e9f06c209b2d45196fa90866a35a6cc049ad3da4e56a018b12"}
+    "production_jar": {"file_name": "bluemap-enderio-addon-0.1.0-alpha.3.jar", "size": 67131, "sha256": "2f7b61a7bdd53bc5cce8181e2575e31b681d26ea734c9e6563c1af7c0fee7d1c"},
+    "sources_jar": {"file_name": "bluemap-enderio-addon-0.1.0-alpha.3-sources.jar", "size": 51775, "sha256": "e83cf1420e27fbc5e9cd1df2ed0c5f27bc6ca8974867eb3b33cc501ad8da1646"},
+    "pom": {"file_name": "bluemap-enderio-addon-0.1.0-alpha.3.pom", "size": 1343, "sha256": "6cdc740cbaf72cade03c7107bb002878eb9a2035dcf36770fe38876c269a91df"},
+    "gradle_module": {"file_name": "bluemap-enderio-addon-0.1.0-alpha.3.module.json", "size": 2817, "sha256": "e3e231410f6cc441f28175e84ac1e7b56448d3551ad122d1be8b3a0e1821ed59"},
+    "sha256sums": {"file_name": "SHA256SUMS", "size": 448, "sha256": "f470f57f60685ca678da861ccf2e7dfe3eb3f099fada0ccd4c338e82b3886a42"}
   },
   "staged_equivalence": {
     "entry_manifest": "provenance/accepted-staging-entries.sha256",
-    "identical_non_manifest_entries": 22,
+    "identical_non_manifest_entries": 23,
     "whole_jar_byte_identical": true,
     "only_changed_entry_bytes": "none",
-    "change_reason": "The sealed alpha.2 candidate is the exact BlueMap 5.23 and Adapter-API migration build. The earlier visual acceptance is carried forward because the exact Ender IO profile, gallery, renderer, block-entity registration, persisted-field decoder, diagnostics, and stock fallback remain unchanged.",
+    "change_reason": "The sealed alpha.3 JAR is the exact combined-pack candidate accepted by the owner. It preserves targets wrapped by another add-on and refreshes BlueNBT after registering Ender IO's persisted Paint projection.",
     "archive_normalization": "Every release JAR entry uses ZIP STORED compression and empty directories are excluded."
+  },
+  "combined_pack_fix": {
+    "baseline_version": "0.1.0-alpha.2",
+    "accepted_source_commit": "41e0da616dd89f6a45bb05cad566b960fb29c825",
+    "accepted_source_tree": "fb178f40772b137b4d946dcb260e623022e75cb1",
+    "bluenbt_hot_add_recovery": true,
+    "original_renderer_snapshot": true,
+    "integration_map": "atmons_integration",
+    "review_center": {"x": 8436, "y": 195, "z": 8964},
+    "checks": 10,
+    "failures": 0
   },
   "adapter_api_migration": {
     "baseline_version": "0.1.0-alpha.1",
